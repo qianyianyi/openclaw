@@ -42,4 +42,4 @@ find / -type d -name "*openclaw*" 2>/dev/null | xargs rm -rf 2>/dev/null || true
 find / -type d -name "*moltbot*" 2>/dev/null | xargs rm -rf 2>/dev/null || true
 
 echo ""
-echo "✅ OpenClaw 已**完全、彻底卸载**，无任何残留！"
+echo "✅ OpenClaw 已卸载完成、彻底卸载成功，无任何残留！"
