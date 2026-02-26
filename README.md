@@ -175,6 +175,10 @@ openclaw update
 ./scripts/auto-update.sh
 ```
 
+### 一键卸载OpenClaw
+# 卸载OpenClaw
+bash <(curl -fsSL https://raw.githubusercontent.com/qianyianyi/openclaw/main/uninstall_openclaw.sh)
+
 ## 🤝 贡献指南
 
 我们欢迎各种形式的贡献！
