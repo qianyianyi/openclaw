@@ -1,0 +1,22 @@
+{
+  "313ed08e-fef5-487b-bfb6-ebce500d039d": {
+    "requestId": "313ed08e-fef5-487b-bfb6-ebce500d039d",
+    "deviceId": "cc99f91b574c72ec3d41a1063a93dd637bbd248898d19c74ad7f13bc44b3860f",
+    "publicKey": "HbNUhcVynhLEMCi65H60egStZwd7kTQLXQvsD3ltGUY",
+    "displayName": "AIshy",
+    "platform": "linux",
+    "clientId": "node-host",
+    "clientMode": "node",
+    "role": "node",
+    "roles": [
+      "node",
+      "operator"
+    ],
+    "silent": false,
+    "isRepair": false,
+    "ts": 1772125640462,
+    "scopes": [
+      "operator.read"
+    ]
+  }
+}

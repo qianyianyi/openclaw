@@ -1,0 +1,4 @@
+# OpenClaw 环境变量配置
+# 由安装脚本自动生成: 2026-02-24 12:50:51
+export ANTHROPIC_API_KEY=sk-c08a0d57de25697168f58d71d8e3579a
+export ANTHROPIC_BASE_URL=https://apis.iflow.cn/v1

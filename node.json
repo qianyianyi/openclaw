@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "nodeId": "b977cb96-3fff-4511-abb3-e9f709d76402",
+  "displayName": "AIshy",
+  "gateway": {
+    "host": "127.0.0.1",
+    "port": 18789,
+    "tls": false
+  }
+}

@@ -1,0 +1,54 @@
+# OpenClaw 配置文件忽略规则
+
+# 敏感配置文件
+configs/openclaw.json
+configs/*.json
+!configs/openclaw.json.example
+
+# 日志文件
+*.log
+logs/
+
+# 临时文件
+*.tmp
+*.temp
+.tmp/
+
+# 系统特定文件
+.DS_Store
+Thumbs.db
+
+# 用户特定配置
+.user-config/
+personal/
+
+# API 密钥和令牌
+*_key
+*_token
+*_secret
+
+# 备份文件
+*.bak
+*.backup
+backup/
+
+# 编译文件
+*.pyc
+__pycache__/
+
+# 环境文件
+.env
+.env.local
+.env.production
+
+# IDE 文件
+.vscode/
+.idea/
+
+# 系统文件
+/systemd/
+/cron/
+
+# 文档构建输出
+docs/_build/
+site/
