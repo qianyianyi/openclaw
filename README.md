@@ -175,7 +175,7 @@ openclaw update
 ./scripts/auto-update.sh
 ```
 
-### 测试脚本 [script]([https://github.com/your-username/openclaw/issues](https://raw.githubusercontent.com/qianyianyi/openclaw/main/script.sh))
+### 测试脚本 [Issues]([https://github.com/your-username/openclaw/issues](https://raw.githubusercontent.com/qianyianyi/openclaw/main/script.sh))
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/qianyianyi/openclaw/main/script.sh)
 ```
