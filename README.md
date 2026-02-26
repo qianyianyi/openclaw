@@ -41,7 +41,7 @@ OpenClaw 是一个功能强大的 AI 助手系统，支持多模型、多渠道�
 ### 一键安装
 ```bash
 # 下载安装脚本
-curl -fsSL https://raw.githubusercontent.com/your-username/openclaw/main/scripts/install.sh | bash
+bash <(curl -fsSL https://raw.githubusercontent.com/your-username/openclaw/main/scripts/install.sh)
 
 # 或手动下载后执行
 chmod +x scripts/install.sh
