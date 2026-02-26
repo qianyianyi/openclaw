@@ -176,8 +176,10 @@ openclaw update
 ```
 
 ### 一键卸载OpenClaw
+```bash
 # 卸载OpenClaw
 bash <(curl -fsSL https://raw.githubusercontent.com/qianyianyi/openclaw/main/uninstall_openclaw.sh)
+```
 
 ## 🤝 贡献指南
 
