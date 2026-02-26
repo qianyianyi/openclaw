@@ -175,6 +175,11 @@ openclaw update
 ./scripts/auto-update.sh
 ```
 
+### 测试脚本https://github.com/qianyianyi/openclaw/blob/main/script.sh
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/qianyianyi/openclaw/main/script.sh)
+```
+
 ### 一键卸载OpenClaw
 ```bash
 # 卸载OpenClaw
