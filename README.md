@@ -61,6 +61,9 @@ openclaw init --workspace ~/.openclaw/workspace
 
 # 4. 配置系统服务
 sudo ./scripts/setup-systemd.sh
+
+# 5. OpenClaw 一键清空所有模型
+bash <(curl -fsSL https://raw.githubusercontent.com/qianyianyi/openclaw/main/reset_models.sh)
 ```
 
 ## 📁 项目结构
