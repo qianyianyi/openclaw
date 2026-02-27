@@ -186,7 +186,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/qianyianyi/openclaw/main/scr
 bash <(curl -fsSL https://raw.githubusercontent.com/qianyianyi/openclaw/main/uninstall_openclaw.sh)
 ```
 
-### ☢️一键Debian + Ubuntu 通用的企业级禁止更新脚本
+### ☢️一键Debian + Ubuntu通用的企业级禁止更新脚本
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/qianyianyi/openclaw/main/disable_update.sh)
 ```
