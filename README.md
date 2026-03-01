@@ -185,6 +185,10 @@ bash <(curl -fsSL https://raw.githubusercontent.com/qianyianyi/openclaw/main/scr
 # 卸载OpenClaw
 bash <(curl -fsSL https://raw.githubusercontent.com/qianyianyi/openclaw/main/uninstall_openclaw.sh)
 ```
+### ☢️Debian 系统加固与锁定脚本
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/qianyianyi/openclaw/main/debian-lockdown.sh)
+```
 
 ### ☢️一键Debian + Ubuntu通用的企业级禁止更新脚本
 ```bash
