@@ -1,23 +1,29 @@
 #!/bin/bash
+set -e
 
-echo "开始彻底卸载 OpenCode..."
+echo "===== 开始禁用 Debian 12 自动更新 ====="
 
-# 1. 删除用户根目录下的隐藏配置
-rm -rf ~/.opencode
-rm -rf ~/.opencode_history
+# 停止并屏蔽 apt-daily 计时器
+sudo systemctl stop apt-daily.timer apt-daily-upgrade.timer
+sudo systemctl disable apt-daily.timer apt-daily-upgrade.timer
+sudo systemctl mask apt-daily.timer apt-daily-upgrade.timer
 
-# 2. 删除 VS Code 插件残留
-rm -rf ~/.vscode/extensions/*opencode*
+# 停止并屏蔽 apt-daily 服务
+sudo systemctl stop apt-daily.service apt-daily-upgrade.service
+sudo systemctl disable apt-daily.service apt-daily-upgrade.service
+sudo systemctl mask apt-daily.service apt-daily-upgrade.service
 
-# 3. (仅限 macOS) 清理应用支持文件和偏好设置
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    rm -rf ~/Library/Application\ Support/OpenCode
-    rm -rf ~/Library/Caches/com.opencode.*
-    rm -rf ~/Library/Preferences/com.opencode.plist
-    echo "macOS 特定残留已清理。"
+# 停止并禁用无人值守升级（如果存在）
+if systemctl list-unit-files | grep -q unattended-upgrades.service; then
+  sudo systemctl stop unattended-upgrades.service
+  sudo systemctl disable unattended-upgrades.service
+  sudo systemctl mask unattended-upgrades.service
 fi
 
-# 4. 清理二进制文件（如果之前安装到了 /usr/local/bin）
-sudo rm -f /usr/local/bin/opencode
+# 强制关闭自动更新检查与无人升级
+echo -e "APT::Periodic::Update-Package-Lists \"0\";\nAPT::Periodic::Unattended-Upgrade \"0\";" | sudo tee /etc/apt/apt.conf.d/20auto-upgrades
 
-echo "卸载完成！所有相关配置文件已移除。"
+echo "===== 禁用完成！ ====="
+echo ""
+echo "验证状态（应显示 masked）："
+systemctl status apt-daily.timer apt-daily-upgrade.timer
