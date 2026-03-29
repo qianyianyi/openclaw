@@ -1,28 +1,46 @@
 #!/bin/sh
 
-# 停止所有 frp 进程
-killall -9 frps frpc 2>/dev/null
+set -e
 
-# 停止并禁用服务
-rc-service frps stop 2>/dev/null
-rc-service frpc stop 2>/dev/null
-rc-update del frps 2>/dev/null
-rc-update del frpc 2>/dev/null
+echo "=== 开始清理 Alpine Linux 系统垃圾 ==="
 
-# 删除服务文件
-rm -rf /etc/init.d/frp*
-rm -rf /etc/frp*
+# 1. 清理 apk 缓存
+echo "清理 apk 缓存..."
+rm -rf /var/cache/apk/*
+apk cache clean 2>/dev/null
 
-# 删除二进制文件
-rm -f /usr/local/bin/frps
-rm -f /usr/local/bin/frpc
+# 2. 卸载无用依赖
+echo "卸载孤立依赖包..."
+apk autoremove --purge
 
-# 删除日志、缓存、残留
-rm -rf /var/log/frp*
-rm -rf /tmp/frp*
-rm -rf /opt/frp /usr/local/frp
+# 3. 清理临时文件
+echo "清理临时目录..."
+rm -rf /tmp/*
+rm -rf /var/tmp/*
 
-# 重载服务
-rc-update -u
+# 4. 清空系统日志（不删除文件，只清空内容）
+echo "清空系统日志..."
+truncate -s0 /var/log/messages 2>/dev/null
+truncate -s0 /var/log/syslog 2>/dev/null
+truncate -s0 /var/log/dmesg 2>/dev/null
+truncate -s0 /var/log/auth.log 2>/dev/null
 
-echo "✅ Alpine 上 frp 已完全清理"
+# 5. 清理归档日志
+echo "清理归档日志..."
+rm -rf /var/log/*.gz
+rm -rf /var/log/*.old
+rm -rf /var/log/*.bz2
+rm -rf /var/log/*.log.*
+
+# 6. 清理 root 缓存
+echo "清理 root 缓存..."
+rm -rf /root/.cache/*
+rm -rf /root/.local/share/Trash/*
+
+# 7. 清理 bash 历史
+echo "清空命令历史..."
+truncate -s0 /root/.ash_history 2>/dev/null
+
+echo ""
+echo "✅ Alpine 系统清理完成！"
+df -h /
