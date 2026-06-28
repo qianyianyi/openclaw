@@ -1,72 +1,89 @@
 #!/bin/bash
-echo "====================================="
-echo "        哪吒面板一键彻底卸载脚本"
-echo "====================================="
+set -euo pipefail
+IFS=$'\n\t'
 
-# 杀掉所有哪吒相关进程
-echo "[1/8] 终止所有哪吒进程..."
-pkill -f nezha 2>/dev/null
-pkill -f nezha-agent 2>/dev/null
-pkill -f nezha-dashboard 2>/dev/null
-sleep 1
+# 必须root执行
+if [ "$(id -u)" -ne 0 ]; then
+    echo "❌ 请使用 root 权限运行此脚本"
+    exit 1
+fi
 
-# 停止并禁用 systemd 服务
-echo "[2/8] 停止并移除 systemd 服务..."
-systemctl stop nezha-agent 2>/dev/null
-systemctl stop nezha-agent.service 2>/dev/null
-systemctl disable nezha-agent 2>/dev/null
-systemctl disable nezha-agent.service 2>/dev/null
+echo "==================== 哪吒面板 深度彻底卸载清理 ===================="
 
-# 删除服务文件
+# 1. 强制查杀所有含nezha进程（多次兜底查杀）
+echo "[1] 查杀所有哪吒相关进程"
+pkill -9 -f "nezha" || true
+pkill -9 -f "nezha-agent" || true
+pkill -9 -f "nezha-dashboard" || true
+sleep 0.5
+
+# 2. systemd 服务清理
+echo "[2] 清理 systemd 服务单元"
+systemctl stop nezha-agent nezha-agent.service nezha-dashboard 2>/dev/null || true
+systemctl disable nezha-agent nezha-agent.service nezha-dashboard 2>/dev/null || true
 rm -f /etc/systemd/system/nezha-agent.service
+rm -f /etc/systemd/system/multi-user.target.wants/nezha-agent.service
 rm -f /usr/lib/systemd/system/nezha-agent.service
 rm -f /lib/systemd/system/nezha-agent.service
-
-# 删除主目录
-echo "[3/8] 删除哪吒所有程序目录..."
-rm -rf /opt/nezha
-rm -rf /etc/nezha
-
-# 重载systemd配置
 systemctl daemon-reload
 systemctl reset-failed
 
-# 清理Docker部署的哪吒
-echo "[4/8] 清理Docker版哪吒容器镜像..."
-if command -v docker &> /dev/null; then
-docker rm -f nezha-dashboard 2>/dev/null
-docker rmi nezhahq/nezha 2>/dev/null
-docker-compose down 2>/dev/null
-rm -rf ./nezha-dashboard ~/nezha-dashboard
+# 3. Alpine OpenRC 启动项清理
+if [ -x /sbin/openrc-run ]; then
+    echo "[3] 清理 Alpine OpenRC 开机自启"
+    rc-service nezha-agent stop 2>/dev/null || true
+    rc-update del nezha-agent default 2>/dev/null || true
+    rm -f /etc/init.d/nezha-agent
 fi
 
-# 删除安装脚本残留
-echo "[5/8] 删除安装脚本残留文件..."
-rm -f ~/nezha.sh
-rm -f ~/agent.sh
-rm -f /root/nezha.sh
-rm -f /root/agent.sh
+# 4. 删除所有安装目录、配置、缓存
+echo "[4] 删除所有哪吒目录文件"
+rm -rf /opt/nezha
+rm -rf /etc/nezha
+rm -rf /var/lib/nezha
+rm -rf /var/log/nezha
+rm -rf /root/.nezha
+rm -rf /home/*/.nezha
 
-# Alpine OpenRC 兼容清理（防止OpenRC系统残留）
-if [ -f /sbin/openrc-run ]; then
-echo "[6/8] 清理Alpine OpenRC自启动..."
-rc-service nezha-agent stop 2>/dev/null
-rc-update del nezha-agent default 2>/dev/null
-rm -f /etc/init.d/nezha-agent
+# 5. 删除安装脚本、残留脚本
+echo "[5] 删除安装脚本残留"
+find / -maxdepth 3 -name "nezha.sh" -o -name "agent.sh" | xargs rm -f 2>/dev/null
+
+# 6. Docker 容器+镜像+配置清理
+echo "[6] 清理 Docker 部署版本"
+if command -v docker &>/dev/null; then
+    docker rm -f nezha-dashboard nezha-agent 2>/dev/null || true
+    docker rmi -f nezhahq/nezha nezhahq/agent 2>/dev/null || true
+    rm -rf /root/nezha-dashboard ./nezha-dashboard ~/nezha-dashboard
+    if command -v docker-compose &>/dev/null; then
+        docker-compose down 2>/dev/null || true
+    fi
 fi
 
-# 自检
-echo -e "\n====================================="
-echo "卸载完成，正在检查残留："
-echo "【残留进程】"
-ps aux | grep nezha | grep -v grep
-echo "【残留服务】"
-systemctl list-unit-files | grep nezha
-echo "【/opt/nezha目录状态】"
-if [ -d "/opt/nezha" ]; then
-    echo "⚠️ /opt/nezha 仍然存在，删除失败"
+# 7. 全盘搜索残留文件并删除（兜底扫残余）
+echo "[7] 全盘扫描删除nezha命名残留文件（稍慢）"
+find / \( -name "*nezha*" \) -type f,d 2>/dev/null | grep -v /proc | grep -v /sys | while read -r file; do
+    rm -rf "$file" 2>/dev/null
+done
+
+# 8. 最终校验
+echo -e "\n==================== 卸载校验结果 ===================="
+echo "1. 残留进程："
+ps aux | grep -i nezha | grep -v grep || echo "✅ 无进程残留"
+
+echo -e "\n2. systemd 残留服务："
+systemctl list-unit-files | grep -i nezha || echo "✅ 无systemd服务残留"
+
+echo -e "\n3. /opt/nezha 目录："
+[ -d /opt/nezha ] && echo "❌ 目录仍存在" || echo "✅ 已彻底删除"
+
+echo -e "\n4. 全盘nezha关键词检索："
+res=$(find / -name "*nezha*" 2>/dev/null | grep -v /proc | grep -v /sys | head -5)
+if [ -z "$res" ]; then
+    echo "✅ 系统无任何哪吒相关残留文件"
 else
-    echo "✅ /opt/nezha 已删除"
+    echo "⚠️ 发现少量残余："
+    echo "$res"
 fi
-echo "====================================="
-echo "哪吒卸载操作全部执行完毕"
+
+echo -e "\n==================== 清理完成 ===================="
