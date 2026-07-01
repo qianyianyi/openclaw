@@ -1,89 +1,98 @@
-#!/bin/bash
-set -euo pipefail
-IFS=$'\n\t'
+#!/bin/sh
+set -e
 
-# 必须root执行
-if [ "$(id -u)" -ne 0 ]; then
-    echo "❌ 请使用 root 权限运行此脚本"
+# 配置项，按需修改
+INSTALL_DIR="/opt/komari"
+LISTEN_ADDR="0.0.0.0:25774"
+ADMIN_USER="AIshy"
+ADMIN_PASS="AIshy980925."
+PORT="25774"
+
+# 更新源+安装依赖
+apk update
+apk add --no-cache wget curl tar
+
+# 判断CPU架构
+ARCH=$(uname -m)
+case "$ARCH" in
+x86_64)
+    BIN_ARCH="amd64"
+    ;;
+aarch64)
+    BIN_ARCH="arm64"
+    ;;
+armv7l|armhf)
+    echo "暂未适配armv7，退出"
+    exit 1
+    ;;
+*)
+    echo "不支持架构: $ARCH"
+    exit 1
+    ;;
+esac
+
+# 获取最新版本下载地址
+API_URL="https://api.github.com/repos/Soulter/Komari/releases/latest"
+DOWNLOAD_URL=$(curl -s $API_URL | grep -o "https.*linux-$BIN_ARCH.tar.gz\"" | sed 's/"$//')
+
+if [ -z "$DOWNLOAD_URL" ]; then
+    echo "获取下载链接失败，请手动下载二进制"
     exit 1
 fi
 
-echo "==================== 哪吒面板 深度彻底卸载清理 ===================="
+# 创建目录并下载
+mkdir -p $INSTALL_DIR
+cd $INSTALL_DIR
+echo "开始下载: $DOWNLOAD_URL"
+wget -q $DOWNLOAD_URL -O komari.tar.gz
+tar -zxf komari.tar.gz
+rm -f komari.tar.gz
+chmod +x komari
 
-# 1. 强制查杀所有含nezha进程（多次兜底查杀）
-echo "[1] 查杀所有哪吒相关进程"
-pkill -9 -f "nezha" || true
-pkill -9 -f "nezha-agent" || true
-pkill -9 -f "nezha-dashboard" || true
-sleep 0.5
+# 写入OpenRC启动脚本
+cat > /etc/init.d/komari <<EOF
+#!/sbin/openrc-run
+name="komari"
+command="$INSTALL_DIR/komari"
+command_args="server -l $LISTEN_ADDR"
+command_background="yes"
+pidfile="/run/\${name}.pid"
+directory="$INSTALL_DIR"
 
-# 2. systemd 服务清理
-echo "[2] 清理 systemd 服务单元"
-systemctl stop nezha-agent nezha-agent.service nezha-dashboard 2>/dev/null || true
-systemctl disable nezha-agent nezha-agent.service nezha-dashboard 2>/dev/null || true
-rm -f /etc/systemd/system/nezha-agent.service
-rm -f /etc/systemd/system/multi-user.target.wants/nezha-agent.service
-rm -f /usr/lib/systemd/system/nezha-agent.service
-rm -f /lib/systemd/system/nezha-agent.service
-systemctl daemon-reload
-systemctl reset-failed
+export ADMIN_USERNAME=$ADMIN_USER
+export ADMIN_PASSWORD=$ADMIN_PASS
 
-# 3. Alpine OpenRC 启动项清理
-if [ -x /sbin/openrc-run ]; then
-    echo "[3] 清理 Alpine OpenRC 开机自启"
-    rc-service nezha-agent stop 2>/dev/null || true
-    rc-update del nezha-agent default 2>/dev/null || true
-    rm -f /etc/init.d/nezha-agent
-fi
+depend() {
+    need net
+    after firewall
+}
+EOF
 
-# 4. 删除所有安装目录、配置、缓存
-echo "[4] 删除所有哪吒目录文件"
-rm -rf /opt/nezha
-rm -rf /etc/nezha
-rm -rf /var/lib/nezha
-rm -rf /var/log/nezha
-rm -rf /root/.nezha
-rm -rf /home/*/.nezha
+chmod +x /etc/init.d/komari
 
-# 5. 删除安装脚本、残留脚本
-echo "[5] 删除安装脚本残留"
-find / -maxdepth 3 -name "nezha.sh" -o -name "agent.sh" | xargs rm -f 2>/dev/null
+# 设置开机自启
+rc-update add komari default
 
-# 6. Docker 容器+镜像+配置清理
-echo "[6] 清理 Docker 部署版本"
-if command -v docker &>/dev/null; then
-    docker rm -f nezha-dashboard nezha-agent 2>/dev/null || true
-    docker rmi -f nezhahq/nezha nezhahq/agent 2>/dev/null || true
-    rm -rf /root/nezha-dashboard ./nezha-dashboard ~/nezha-dashboard
-    if command -v docker-compose &>/dev/null; then
-        docker-compose down 2>/dev/null || true
-    fi
-fi
-
-# 7. 全盘搜索残留文件并删除（兜底扫残余）
-echo "[7] 全盘扫描删除nezha命名残留文件（稍慢）"
-find / \( -name "*nezha*" \) -type f,d 2>/dev/null | grep -v /proc | grep -v /sys | while read -r file; do
-    rm -rf "$file" 2>/dev/null
-done
-
-# 8. 最终校验
-echo -e "\n==================== 卸载校验结果 ===================="
-echo "1. 残留进程："
-ps aux | grep -i nezha | grep -v grep || echo "✅ 无进程残留"
-
-echo -e "\n2. systemd 残留服务："
-systemctl list-unit-files | grep -i nezha || echo "✅ 无systemd服务残留"
-
-echo -e "\n3. /opt/nezha 目录："
-[ -d /opt/nezha ] && echo "❌ 目录仍存在" || echo "✅ 已彻底删除"
-
-echo -e "\n4. 全盘nezha关键词检索："
-res=$(find / -name "*nezha*" 2>/dev/null | grep -v /proc | grep -v /sys | head -5)
-if [ -z "$res" ]; then
-    echo "✅ 系统无任何哪吒相关残留文件"
+# 放行端口 nftables(默认) / iptables 兼容
+if nft list ruleset >/dev/null 2>&1; then
+    nft add rule inet filter input tcp dport $PORT accept
 else
-    echo "⚠️ 发现少量残余："
-    echo "$res"
+    iptables -A INPUT -p tcp --dport $PORT -j ACCEPT
+    apk add --no-cache iptables-save
+    mkdir -p /etc/iptables
+    iptables-save > /etc/iptables/rules-save
 fi
 
-echo -e "\n==================== 清理完成 ===================="
+# 启动服务
+rc-service komari restart
+
+echo "============================================="
+echo "Komari 部署完成"
+echo "安装目录: $INSTALL_DIR"
+echo "访问地址: http://本机IP:$PORT"
+echo "管理员账号: $ADMIN_USER"
+echo "管理员密码: $ADMIN_PASS"
+echo "数据目录: $INSTALL_DIR/data"
+echo "启停命令:"
+echo "  rc-service komari start|stop|restart|status"
+echo "============================================="
