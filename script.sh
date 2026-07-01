@@ -32,7 +32,7 @@ armv7l|armhf)
 esac
 
 # 获取最新版本下载地址
-API_URL="https://api.github.com/repos/Soulter/Komari/releases/latest"
+API_URL="https://raw.githubusercontent.com/komari-monitor/komari/main/install-komari.sh"
 DOWNLOAD_URL=$(curl -s $API_URL | grep -o "https.*linux-$BIN_ARCH.tar.gz\"" | sed 's/"$//')
 
 if [ -z "$DOWNLOAD_URL" ]; then
