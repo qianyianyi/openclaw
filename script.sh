@@ -1,55 +1,41 @@
 #!/bin/sh
 set -e
 
-# 配置项，按需修改
 INSTALL_DIR="/opt/komari"
 LISTEN_ADDR="0.0.0.0:25774"
 ADMIN_USER="AIshy"
 ADMIN_PASS="AIshy980925."
 PORT="25774"
 
-# 更新源+安装依赖
 apk update
 apk add --no-cache wget curl tar
 
-# 判断CPU架构
 ARCH=$(uname -m)
 case "$ARCH" in
-x86_64)
-    BIN_ARCH="amd64"
-    ;;
-aarch64)
-    BIN_ARCH="arm64"
-    ;;
-armv7l|armhf)
-    echo "暂未适配armv7，退出"
-    exit 1
-    ;;
-*)
-    echo "不支持架构: $ARCH"
-    exit 1
-    ;;
+x86_64) BIN_ARCH="amd64" ;;
+aarch64) BIN_ARCH="arm64" ;;
+*) echo "不支持架构 $ARCH"; exit 1 ;;
 esac
 
-# 获取最新版本下载地址
-API_URL="https://raw.githubusercontent.com/komari-monitor/komari/main/install-komari.sh"
-DOWNLOAD_URL=$(curl -s $API_URL | grep -o "https.*linux-$BIN_ARCH.tar.gz\"" | sed 's/"$//')
+# 使用 ghproxy 加速 GitHub API
+API_URL="https://ghproxy.net/https://api.github.com/repos/komari-monitor/komari/releases/latest"
+DOWNLOAD_RAW=$(curl -s --connect-timeout 15 "$API_URL" | grep -o "https.*linux-$BIN_ARCH.tar.gz\"" | sed 's/"$//')
 
-if [ -z "$DOWNLOAD_URL" ]; then
-    echo "获取下载链接失败，请手动下载二进制"
-    exit 1
+if [ -z "$DOWNLOAD_RAW" ]; then
+    echo "API获取失败，改用固定最新版v1.1.9下载"
+    DOWNLOAD_RAW="https://github.com/komari-monitor/komari/releases/download/v1.1.9/komari-linux-$BIN_ARCH.tar.gz"
 fi
+DOWNLOAD_URL="https://ghproxy.net/$DOWNLOAD_RAW"
 
-# 创建目录并下载
 mkdir -p $INSTALL_DIR
 cd $INSTALL_DIR
-echo "开始下载: $DOWNLOAD_URL"
-wget -q $DOWNLOAD_URL -O komari.tar.gz
+echo "下载: $DOWNLOAD_URL"
+wget -q --timeout=20 "$DOWNLOAD_URL" -O komari.tar.gz
 tar -zxf komari.tar.gz
 rm -f komari.tar.gz
 chmod +x komari
 
-# 写入OpenRC启动脚本
+# OpenRC 启动脚本
 cat > /etc/init.d/komari <<EOF
 #!/sbin/openrc-run
 name="komari"
@@ -69,11 +55,9 @@ depend() {
 EOF
 
 chmod +x /etc/init.d/komari
-
-# 设置开机自启
 rc-update add komari default
 
-# 放行端口 nftables(默认) / iptables 兼容
+# 放行端口
 if nft list ruleset >/dev/null 2>&1; then
     nft add rule inet filter input tcp dport $PORT accept
 else
@@ -83,16 +67,13 @@ else
     iptables-save > /etc/iptables/rules-save
 fi
 
-# 启动服务
 rc-service komari restart
 
-echo "============================================="
-echo "Komari 部署完成"
-echo "安装目录: $INSTALL_DIR"
-echo "访问地址: http://本机IP:$PORT"
-echo "管理员账号: $ADMIN_USER"
-echo "管理员密码: $ADMIN_PASS"
+echo "========================================"
+echo "部署完成"
+echo "访问地址: http://$(hostname -i):$PORT"
+echo "账号: $ADMIN_USER"
+echo "密码: $ADMIN_PASS"
+echo "启停: rc-service komari start|stop|restart|status"
 echo "数据目录: $INSTALL_DIR/data"
-echo "启停命令:"
-echo "  rc-service komari start|stop|restart|status"
-echo "============================================="
+echo "========================================"
